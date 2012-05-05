@@ -85,5 +85,6 @@ Usage: ./archits.sh 1
 
 =======================================================
 
-arc_summary.pl came from: http://cuddletech.com/arc_summary/
+arc_summary.pl originally came from: http://cuddletech.com/arc_summary/
+ported to freebsd: http://jhell.googlecode.com/files/arc_summary.pl
 
