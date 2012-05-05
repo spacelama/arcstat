@@ -1,20 +1,13 @@
-#!/usr/perl5/bin/perl -w
+#!/usr/bin/perl -w
+# -*- Mode: perl; cperl-indent-level: 8; indent-tabs-mode: t -*-
 #
-# Print out ZFS ARC Statistics exported via kstat(1)
+# Print out, on zfsonlinux systems, ZFS ARC Statistics, exported via
+# the Linux proc interface
 # For a definition of fields, or usage, use arctstat.pl -v
 #
-# This script is a fork of the original arcstat.pl (0.1) by
-# Neelakanth Nadgir, originally published on his Sun blog on
-# 09/18/2007
-#     http://blogs.sun.com/realneel/entry/zfs_arc_statistics
-#
-# This version aims to improve upon the original by adding features
-# and fixing bugs as needed.  This version is maintained by 
-# Mike Harsch and is hosted in a public open source repository:
-#    http://github.com/mharsch/arcstat
-#
-# Comments, Questions, or Suggestions are always welcome.
-# Contact the maintainer at ( mike at harschsystems dot com )
+# This script is a fork of Mike Harsch's version to work under linux,
+# and is hosted in a public open source repository:
+# http://github.com/spacelama/arcstat
 #
 # CDDL HEADER START
 #
@@ -44,7 +37,6 @@
 
 use strict;
 use POSIX qw(strftime);
-use Sun::Solaris::Kstat;
 use Getopt::Long;
 use IO::Handle;
 
@@ -95,15 +87,35 @@ my $count = 1;		# Default count is 1
 my $hdr_intr = 20;	# Print header every 20 lines of output
 my $opfile = "";
 my $sep = "  ";		# Default separator is 2 spaces
-my $version = "0.4";
+my $version = "0.4twc";
 my $l2exist = 0;
 my $cmd = "Usage: arcstat [-hvx] [-f fields] [-o file] [-s string] " .
     "[interval [count]]\n";
 my %cur;
 my %d;
 my $out;
-my $kstat = Sun::Solaris::Kstat->new();
+my $kstat;                     # = Sun::Solaris::Kstat->new();
 STDOUT->autoflush;
+
+sub kstat_update {
+	my @k = `tail -n +3 /proc/spl/kstat/zfs/arcstats`;
+	if (!@k) {
+		exit 1;
+	}
+	;
+
+	undef $kstat;
+
+	foreach $_ (@k) {
+		chomp;
+		my ($name,$junk,$value) = split;
+		#    print "name=$name,value=$value\n";
+		my @z = split /\./, $name;
+		my $n = pop @z;
+		#    print "n=$n\n";
+		${kstat}->{zfs}->{0}->{arcstats}->{$n} = $value;
+	}
+}
 
 sub detailed_usage {
 	print STDERR "$cmd\n";
@@ -203,9 +215,7 @@ sub init {
 # and delta (cur - prev) statistics.
 sub snap_stats {
 	my %prev = %cur;
-	if ($kstat->update()) {
-		printf("<State Changed>\n");
-	}
+	kstat_update();
 	my $hashref_cur = $kstat->{"zfs"}{0}{"arcstats"};
 	%cur = %$hashref_cur;
 	foreach my $key (keys %cur) {
