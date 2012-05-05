@@ -1,0 +1,40 @@
+#!/bin/sh
+# ZFS ARC statistics for FreeBSD
+# Author: alex@trull-dot-org 
+#
+#%# family=auto
+#%# capabilities=autoconf
+
+sysctl='/sbin/sysctl'
+
+case $1 in
+    config)
+	cat <<EOF
+graph_args --base 1024 -l 0 --vertical-label Bytes 
+graph_title ZFS ARC Memory - L2
+graph_category filesystem 
+graph_info ZFS ARC L2 Memory
+EOF
+$sysctl kstat.zfs.misc.arcstats | grep l2 | egrep '(\.p:|\.c:|c_min|c_max|size)' | awk 'BEGIN { FS = "[.:]" } { displayname = $5; gsub("_"," ",displayname) } {print $5".label "displayname"\n"$5".type GAUGE\n"$5".min 0"}' | grep -v "^\."
+	exit 0
+	;;
+    autoconf)
+	if [ ! -x ${sysctl} ]; then
+	    echo "no (${sysctl} is not executable)"
+	    exit 1
+	fi
+	ostype=`uname -s`
+	if [ ${ostype} = "FreeBSD" ]; then
+	    echo "yes"
+	    exit 0
+	fi
+	echo "no (Your OS is not supported by this plugin)"
+	exit 1
+	;;
+    suggest)
+	exit 0
+	;;
+esac
+
+$sysctl kstat.zfs.misc.arcstats | grep l2 | egrep '(\.p:|\.c:|c_min|c_max|size)' | awk 'BEGIN { FS = "[.:]" } { displayname = $5; gsub("_"," ",displayname) } {print $5".value",$NF}' | grep -v "^\."
+
