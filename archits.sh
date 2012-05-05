@@ -1,8 +1,11 @@
-#!/usr/bin/sh
+#!/bin/sh
 
 interval=${1:-5}        # 5 secs by default
-      
-kstat -p zfs:0:arcstats:hits zfs:0:arcstats:misses $interval | awk '
+
+while : ; do
+    grep -e ^hits -e ^misses /proc/spl/kstat/zfs/arcstats | awk "{print \"arcstats.\"\$1\":\", \$3}"
+    sleep $interval
+done | awk '
        BEGIN {
                printf "%12s %12s %9s\n", "HITS", "MISSES", "HITRATE"
        }

@@ -1,3 +1,8 @@
+This repository contains a bunch of zfs nagios, munin, healthcheck, and 
+status scripts grabbed from various sources over the net, and ported to linux
+
+====================================================================================
+
 arcstat.pl is a Perl script that uses the linux proc interface to read
 ZFS ARC kstat values from the system running zfsonlinux and report on 
 an interval basis. 
@@ -71,3 +76,7 @@ l2bytes : bytes read per second from the L2ARC
   mread : Metadata accesses per second
    phit : Prefetch hits per second
 
+=======================================================
+
+archits.sh came from:
+http://dtrace.org/blogs/brendan/2012/01/09/activity-of-the-zfs-arc/
