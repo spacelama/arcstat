@@ -31,6 +31,8 @@ Examples:
         arcstat -s , -o /tmp/a.log 2 10
         arcstat -v
         arcstat -f time,hit%,dh%,ph%,mh% 
+        arcstat 1
+        arcstat -f read,hits,miss,hit%,l2read,l2hits,l2miss,l2hit%,arcsz,l2size 1
 
 Available fields (statistics) can be retrieved with the "-v" flag:
 
@@ -88,3 +90,4 @@ Usage: ./archits.sh 1
 arc_summary.pl originally came from: http://cuddletech.com/arc_summary/
 ported to freebsd: http://jhell.googlecode.com/files/arc_summary.pl
 
+Usage: ./arc_summary.pl

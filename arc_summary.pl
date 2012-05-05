@@ -1,10 +1,12 @@
 #!/usr/bin/env -iS perl
+# -*- Mode: perl; cperl-indent-level: 8; indent-tabs-mode: t -*-
 #
 # $Id$
 #
 # Copyright (c) 2008 Ben Rockwood <benr@cuddletech.com>,
 # Copyright (c) 2010 Martin Matuska <mm@FreeBSD.org>,
 # Copyright (c) 2010-2012 Jason J. Hellenthal <jhell@DataIX.net>,
+# Copyright (c) 2012 Tim Connors <tconnors@rather.puzzling.org>,
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -45,7 +47,7 @@
 use strict;
 use Getopt::Std;
 
-my $usetunable = 1;			# Change to 0 to disable sysctl MIB spill.
+my $usetunable = 0;			# Change to 0 to disable sysctl MIB spill.
 my $show_sysctl_descriptions = 0;	# Change to 1 (or use the -d flag) to show sysctl descriptions.
 my $alternate_sysctl_layout = 0;	# Change to 1 (or use the -a flag) for alternate output.
 
@@ -162,14 +164,29 @@ my @Kstats = qw(
 	vfs.zfs
 );
 
-my $Kstat;
-my @Kstat_pull = `/sbin/sysctl -q @Kstats`;
-foreach my $kstat (@Kstat_pull) {
-	chomp $kstat;
-	if ($kstat =~ m/^([^:]+):\s+(.+)\s*$/s) {
-		$Kstat->{$1} = $2;
-	};
-};
+my $Kstat; # = Sun::Solaris::Kstat->new();
+
+sub kstat_update {
+  my @k = `tail -n +3 /proc/spl/kstat/zfs/arcstats`;
+  if (!@k) {
+    exit 1;
+  }
+  ;
+
+  undef $Kstat;
+
+  foreach $_ (@k) {
+    chomp;
+    my ($name,$junk,$value) = split;
+#    print "name=$name,value=$value\n";
+    my @z = split /\./, $name;
+    my $n = pop @z;
+#    print "n=$n\n";
+    ${Kstat}->{"kstat.zfs.misc.arcstats.$n"} = $value;
+  }
+}
+
+kstat_update();
 
 sub _system_memory {
 	sub mem_rounded {
@@ -240,7 +257,7 @@ printf("ZFS Subsystem Report\t\t\t\t%s", $daydate);
 div2;
 
 sub _arc_summary {
-	if (!$Kstat->{"vfs.zfs.version.spa"}) { return };
+	if (! -e "/proc/spl/kstat/zfs/arcstats") { return };
 	my $spa = $Kstat->{"vfs.zfs.version.spa"};
 	my $zpl = $Kstat->{"vfs.zfs.version.zpl"};
 	my $memory_throttle_count = $Kstat->{"kstat.zfs.misc.arcstats.memory_throttle_count"};
@@ -320,7 +337,7 @@ sub _arc_summary {
 }
 
 sub _arc_efficiency {
-	if (!$Kstat->{"vfs.zfs.version.spa"}) { return };
+	if (! -e "/proc/spl/kstat/zfs/arcstats") { return };
 	my $arc_hits = $Kstat->{"kstat.zfs.misc.arcstats.hits"};
 	my $arc_misses = $Kstat->{"kstat.zfs.misc.arcstats.misses"};
 	my $demand_data_hits = $Kstat->{"kstat.zfs.misc.arcstats.demand_data_hits"};
@@ -396,7 +413,7 @@ sub _arc_efficiency {
 }
 
 sub _l2arc_summary {
-	if (!$Kstat->{"vfs.zfs.version.spa"}) { return };
+	if (! -e "/proc/spl/kstat/zfs/arcstats") { return };
 	my $l2_abort_lowmem = $Kstat->{"kstat.zfs.misc.arcstats.l2_abort_lowmem"};
 	my $l2_cksum_bad = $Kstat->{"kstat.zfs.misc.arcstats.l2_cksum_bad"};
 	my $l2_evict_lock_retry = $Kstat->{"kstat.zfs.misc.arcstats.l2_evict_lock_retry"};
@@ -486,7 +503,7 @@ sub _l2arc_summary {
 }
 
 sub _dmu_summary {
-	if (!$Kstat->{"vfs.zfs.version.spa"}) { return };
+	if (! -e "/proc/spl/kstat/zfs/arcstats") { return };
 	my $zfetch_bogus_streams = $Kstat->{"kstat.zfs.misc.zfetchstats.bogus_streams"};
 	my $zfetch_colinear_hits = $Kstat->{"kstat.zfs.misc.zfetchstats.colinear_hits"};
 	my $zfetch_colinear_misses = $Kstat->{"kstat.zfs.misc.zfetchstats.colinear_misses"};
@@ -560,7 +577,7 @@ sub _dmu_summary {
 }
 
 sub _vdev_summary {
-	if (!$Kstat->{"vfs.zfs.version.spa"}) { return };
+	if (! -e "/proc/spl/kstat/zfs/arcstats") { return };
 	my $vdev_cache_delegations = $Kstat->{"kstat.zfs.misc.vdev_cache_stats.delegations"};
 	my $vdev_cache_misses = $Kstat->{"kstat.zfs.misc.vdev_cache_stats.misses"};
 	my $vdev_cache_hits = $Kstat->{"kstat.zfs.misc.vdev_cache_stats.hits"};
