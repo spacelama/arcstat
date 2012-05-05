@@ -1,4 +1,4 @@
-#!/usr/perl5/bin/perl -w
+#!/usr/bin/perl -w
 #
 ## benr@cuddletech.com
 ## arc_summary.pl v0.3
@@ -29,38 +29,60 @@
 #
 
 use strict;
-use Sun::Solaris::Kstat;
 
 
 
-my $Kstat = Sun::Solaris::Kstat->new();
+my $Kstat; # = Sun::Solaris::Kstat->new();
+
+sub kstat_update {
+  my @k = `tail -n +3 /proc/spl/kstat/zfs/arcstats`;
+  if (!@k) {
+    exit 1;
+  }
+  ;
+
+  undef $Kstat;
+
+  foreach $_ (@k) {
+    chomp;
+    my ($name,$junk,$value) = split;
+#    print "name=$name,value=$value\n";
+    my @z = split /\./, $name;
+    my $n = pop @z;
+#    print "n=$n\n";
+    ${Kstat}->{zfs}->{0}->{arcstats}->{$n} = $value;
+  }
+}
+
+kstat_update();
 
 ### System Memory ###
-my $phys_pages = ${Kstat}->{unix}->{0}->{system_pages}->{physmem};
-my $free_pages = ${Kstat}->{unix}->{0}->{system_pages}->{freemem};
-my $lotsfree_pages = ${Kstat}->{unix}->{0}->{system_pages}->{lotsfree};
-my $pagesize = `pagesize`;
+#my $phys_pages = ${Kstat}->{unix}->{0}->{system_pages}->{physmem};
+#my $free_pages = ${Kstat}->{unix}->{0}->{system_pages}->{freemem};
+#my $lotsfree_pages = ${Kstat}->{unix}->{0}->{system_pages}->{lotsfree};
+#my $pagesize = 4096;
 
-my $phys_memory = ($phys_pages * $pagesize);
-my $free_memory = ($free_pages * $pagesize);
-my $lotsfree_memory = ($lotsfree_pages * $pagesize);
+#my $phys_memory = ($phys_pages * $pagesize);
+#my $free_memory = ($free_pages * $pagesize);
+#my $lotsfree_memory = ($lotsfree_pages * $pagesize);
 
 print "System Memory:\n";
-printf("\t Physical RAM: \t%d MB\n", $phys_memory / 1024 / 1024);
-printf("\t Free Memory : \t%d MB\n", $free_memory / 1024 / 1024);
-printf("\t LotsFree: \t%d MB\n", $lotsfree_memory / 1024 / 1024);
-print "\n";
+#printf("\t Physical RAM: \t%d MB\n", $phys_memory / 1024 / 1024);
+#printf("\t Free Memory : \t%d MB\n", $free_memory / 1024 / 1024);
+#printf("\t LotsFree: \t%d MB\n", $lotsfree_memory / 1024 / 1024);
+system("free -m");
+#print "\n";
 ##########################
 
 
 #### Tunables #####################
-my @tunables = `grep zfs /etc/system`;
-print "ZFS Tunables (/etc/system):\n";
-foreach(@tunables){
-        chomp($_);
-        print "\t $_\n";
-}
-print "\n";
+#my @tunables = `grep zfs /etc/system`;
+#print "ZFS Tunables (/etc/system):\n";
+#foreach(@tunables){
+#        chomp($_);
+#        print "\t $_\n";
+#}
+#print "\n";
 
 #### ARC Sizing ###############
 my $mru_size = ${Kstat}->{zfs}->{0}->{arcstats}->{p};
