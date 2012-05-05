@@ -80,3 +80,10 @@ l2bytes : bytes read per second from the L2ARC
 
 archits.sh came from:
 http://dtrace.org/blogs/brendan/2012/01/09/activity-of-the-zfs-arc/
+
+Usage: ./archits.sh 1
+
+=======================================================
+
+arc_summary.pl came from: http://cuddletech.com/arc_summary/
+
