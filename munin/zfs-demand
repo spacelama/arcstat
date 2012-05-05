@@ -1,11 +1,16 @@
 #!/bin/sh
-# ZFS ARC statistics for FreeBSD
+# ZFS ARC statistics for Linux
 # Author alex@trull-dot-org
+# Ported by tconnors@rather.puzzling.org
 #
 #%# family=auto
 #%# capabilities=autoconf
 
-sysctl='/sbin/sysctl'
+sysctl=sysctl
+sysctl() {
+    path=`echo "$1" | sed 's-\.-/-g ; s-^-/proc/spl/- ; s-misc/--'`
+    tail -n +3 $path | awk "{print \"$1.\"\$1\":\", \$3}"
+}
 
 case $1 in
     config)
@@ -21,17 +26,17 @@ $sysctl kstat.zfs.misc.arcstats | egrep -i Demand | awk 'BEGIN { FS = "[.:]" } /
 	exit 0
 	;;
     autoconf)
-	if [ ! -x ${sysctl} ]; then
-	    echo "no (${sysctl} is not executable)"
-	    exit 1
-	fi
-	ostype=`uname -s`
-	if [ ${ostype} = "FreeBSD" ]; then
+#	if [ ! -x ${sysctl} ]; then
+#	    echo "no (${sysctl} is not executable)"
+#	    exit 1
+#	fi
+#	ostype=`uname -s`
+#	if [ ${ostype} = "FreeBSD" ]; then
 	    echo "yes"
 	    exit 0
-	fi
-	echo "no (Your OS is not supported by this plugin)"
-	exit 1
+#	fi
+#	echo "no (Your OS is not supported by this plugin)"
+#	exit 1
 	;;
     suggest)
 	exit 0
