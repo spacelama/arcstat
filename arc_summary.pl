@@ -1,4 +1,4 @@
-#!/usr/bin/env -iS perl
+#!/usr/bin/env perl
 # -*- Mode: perl; cperl-indent-level: 8; indent-tabs-mode: t -*-
 #
 # $Id$
