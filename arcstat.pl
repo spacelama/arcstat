@@ -88,8 +88,9 @@ my $hdr_intr = 20;	# Print header every 20 lines of output
 my $opfile = "";
 my $sep = "  ";		# Default separator is 2 spaces
 my $version = "0.4twc";
+my $raw_output;
 my $l2exist = 0;
-my $cmd = "Usage: arcstat [-hvx] [-f fields] [-o file] [-s string] " .
+my $cmd = "Usage: arcstat [-hvxr] [-f fields] [-o file] [-s string] " .
     "[interval [count]]\n";
 my %cur;
 my %d;
@@ -132,6 +133,7 @@ sub usage {
 	print STDERR "\t -v : List all possible field headers " .
 	    "and definitions\n";
 	print STDERR "\t -x : Print extended stats\n";
+	print STDERR "\t -r : Raw output mode (values not scaled)\n";
 	print STDERR "\t -f : Specify specific fields to print (see -v)\n";
 	print STDERR "\t -o : Redirect output to the specified file\n";
 	print STDERR "\t -s : Override default field separator with custom " .
@@ -154,7 +156,8 @@ sub init {
 	    'help|h|?' => \$hflag,
 	    'v' => \$vflag,
 	    's=s' => \$sep,
-	    'f=s' => \$desired_cols);
+	    'f=s' => \$desired_cols,
+	    'r' => \$raw_output);
 
 	$int = $ARGV[0] || $int;
 	$count = $ARGV[1] || $count;
@@ -202,12 +205,12 @@ sub init {
 			usage();
 		}
 	}
+
 	if ($opfile) {
 		open($out, ">$opfile") ||die "Cannot open $opfile for writing";
 		$out->autoflush;
 		select $out;
 	}
-
 }
 
 # Capture kstat statistics. We maintain 3 hashes, prev, cur, and
@@ -259,26 +262,43 @@ sub prettynum {
 
 sub print_values {
 	foreach my $col (@hdr) {
-		printf("%s%s", prettynum($cols{$col}[0], $cols{$col}[1],
-			$v{$col}), $sep);
+		if (not $raw_output) {
+			printf("%s%s", prettynum($cols{$col}[0], $cols{$col}[1],
+			    $v{$col}), $sep);
+		} else {
+			printf("%d%s", $v{$col} || 0, $sep);
+		}
 	}
 	printf("\n");
 }
 
 sub print_header {
-	foreach my $col (@hdr) {
-		printf("%*s%s", $cols{$col}[0], $col, $sep);
-	}
+	if (not $raw_output) {
+		foreach my $col (@hdr) {
+			printf("%*s%s", $cols{$col}[0], $col, $sep);
+		}
+	} else {
+		# Don't try to align headers in raw mode
+		foreach my $col (@hdr) {
+			printf("%s%s", $col, $sep);
+		}
+	}	
 	printf("\n");
 }
 
 sub calculate {
 	%v = ();
-	$v{"time"} = strftime("%H:%M:%S", localtime);
+
+	if ($raw_output) {
+		$v{"time"} = strftime("%s", localtime);
+	} else {
+		$v{"time"} = strftime("%H:%M:%S", localtime);
+	}
+
 	$v{"hits"} = $d{"hits"}/$int;
 	$v{"miss"} = $d{"misses"}/$int;
 	$v{"read"} = $v{"hits"} + $v{"miss"};
-	$v{"hit%"} = 100*$v{"hits"}/$v{"read"} if $v{"read"} > 0;
+	$v{"hit%"} = 100 * ($v{"hits"} / $v{"read"}) if $v{"read"} > 0;
 	$v{"miss%"} = 100 - $v{"hit%"} if $v{"read"} > 0;
 
 	$v{"dhit"} = ($d{"demand_data_hits"} +
@@ -287,7 +307,7 @@ sub calculate {
 	    $d{"demand_metadata_misses"})/$int;
 
 	$v{"dread"} = $v{"dhit"} + $v{"dmis"};
-	$v{"dh%"} = 100 * $v{"dhit"}/$v{"dread"} if $v{"dread"} > 0;
+	$v{"dh%"} = 100 * ($v{"dhit"} / $v{"dread"}) if $v{"dread"} > 0;
 	$v{"dm%"} = 100 - $v{"dh%"} if $v{"dread"} > 0;
 
 	$v{"phit"} = ($d{"prefetch_data_hits"} +
@@ -296,7 +316,7 @@ sub calculate {
 	    $d{"prefetch_metadata_misses"})/$int;
 
 	$v{"pread"} = $v{"phit"} + $v{"pmis"};
-	$v{"ph%"} = 100 * $v{"phit"}/$v{"pread"} if $v{"pread"} > 0;
+	$v{"ph%"} = 100 * ($v{"phit"} / $v{"pread"}) if $v{"pread"} > 0;
 	$v{"pm%"} = 100 - $v{"ph%"} if $v{"pread"} > 0;
 
 	$v{"mhit"} = ($d{"prefetch_metadata_hits"} +
@@ -305,7 +325,7 @@ sub calculate {
 	    $d{"demand_metadata_misses"})/$int;
 
 	$v{"mread"} = $v{"mhit"} + $v{"mmis"};
-	$v{"mh%"} = 100 * $v{"mhit"}/$v{"mread"} if $v{"mread"} > 0;
+	$v{"mh%"} = 100 * ($v{"mhit"} / $v{"mread"}) if $v{"mread"} > 0;
 	$v{"mm%"} = 100 - $v{"mh%"} if $v{"mread"} > 0;
 
 	$v{"arcsz"} = $cur{"size"};
@@ -322,7 +342,7 @@ sub calculate {
 		$v{"l2hits"} = $d{"l2_hits"}/$int;
 		$v{"l2miss"} = $d{"l2_misses"}/$int;
 		$v{"l2read"} = $v{"l2hits"} + $v{"l2miss"};
-		$v{"l2hit%"} = 100 * $v{"l2hits"}/$v{"l2read"} 
+		$v{"l2hit%"} = 100 * ($v{"l2hits"} / $v{"l2read"}) 
 		    if $v{"l2read"} > 0;
 
 		$v{"l2miss%"} = 100 - $v{"l2hit%"} if $v{"l2read"} > 0;
@@ -343,7 +363,7 @@ sub main {
 		calculate();
 		print_values();
 		last if ($count_flag == 1 && $count-- <= 1);
-		$i = ($i == $hdr_intr) ? 0 : $i+1;
+		$i = (($i == $hdr_intr) && (not $raw_output)) ? 0 : $i+1;
 		sleep($int);
 	}
 	close($out) if defined $out;
