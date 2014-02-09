@@ -1,8 +1,6 @@
 This repository contains a bunch of zfs nagios, munin, healthcheck, and 
 status scripts grabbed from various sources over the net, and ported to linux
 
-====================================================================================
-
 arcstat.pl is a Perl script that uses the linux proc interface to read
 ZFS ARC kstat values from the system running zfsonlinux and report on 
 an interval basis. 
@@ -19,7 +17,6 @@ the L2ARC (i.e. nevada-based releases).
 Usage for arcstat.pl can be obtained by providing the "--help" flag:
 
 ./arcstat.pl --help
-Arcstat version 0.4
 Usage: arcstat.pl [-hvxr] [-f fields] [-o file] [interval [count]]
          -x : Print extended stats
          -r : Raw Output mode (values not scaled)
@@ -38,7 +35,6 @@ Examples:
 Available fields (statistics) can be retrieved with the "-v" flag:
 
 ./arcstat.pl -v
-Arcstat version 0.4
 Usage: arcstat.pl [-hvxr] [-f fields] [-o file] [interval [count]]
 Field definitions are as follows
  mtxmis : mutex_miss per second
@@ -48,6 +44,7 @@ Field definitions are as follows
     mh% : Metadata hit percentage
 l2miss% : L2ARC access miss percentage
    read : Total Arc accesses per second
+l2asize : Actual (compressed) size of the L2ARC
       c : Arc Target Size
    mfug : MFU Ghost List hits per second
    miss : Arc misses per second

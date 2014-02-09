@@ -1,5 +1,8 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 # -*- Mode: perl; cperl-indent-level: 8; indent-tabs-mode: t -*-
+##!/usr/perl5/bin/perl -w
+# The above invocation line was changed in 0.5 to allow for
+# interoperability with linux.
 #
 # Print out, on zfsonlinux systems, ZFS ARC Statistics, exported via
 # the Linux proc interface
@@ -36,6 +39,7 @@
 # just iterate over this array and print the values using our pretty printer.
 
 use strict;
+use warnings;
 use POSIX qw(strftime);
 use Getopt::Long;
 use IO::Handle;
@@ -76,6 +80,7 @@ my %cols = (# HDR => [Size, Scale, Description]
 	"l2read"	=>[6, 1000, "Total L2ARC accesses per second"],
 	"l2hit%"	=>[6, 100, "L2ARC access hit percentage"],
 	"l2miss%"	=>[7, 100, "L2ARC access miss percentage"],
+	"l2asize"       =>[7, 1024, "Actual (compressed) size of the L2ARC"],
 	"l2size"	=>[6, 1024, "Size of the L2ARC"],
 	"l2bytes"	=>[7, 1024, "bytes read per second from the L2ARC"],
 );
@@ -87,8 +92,8 @@ my $count = 1;		# Default count is 1
 my $hdr_intr = 20;	# Print header every 20 lines of output
 my $opfile = "";
 my $sep = "  ";		# Default separator is 2 spaces
-my $version = "0.4twc";
 my $raw_output;
+my $version = "0.5twc";
 my $l2exist = 0;
 my $cmd = "Usage: arcstat [-hvxr] [-f fields] [-o file] [-s string] " .
     "[interval [count]]\n";
@@ -158,9 +163,6 @@ sub init {
 	    's=s' => \$sep,
 	    'f=s' => \$desired_cols,
 	    'r' => \$raw_output);
-
-	$int = $ARGV[0] || $int;
-	$count = $ARGV[1] || $count;
 
 	if (defined $ARGV[0] && defined $ARGV[1]) {
 		$int = $ARGV[0];
