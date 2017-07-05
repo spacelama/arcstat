@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # ZFS ARC statistics for Linux
 # Author alex@trull-dot-org
 # Ported by tconnors@rather.puzzling.org
@@ -12,6 +12,25 @@ sysctl() {
     tail -n +3 $path | awk "{print \"$1.\"\$1\":\", \$3}"
 }
 
+getstats() {
+    $sysctl kstat.zfs.misc.arcstats | egrep '(\.p:|\.c:|c_min|c_max|size|arc_meta|arc_sys|arc_prune|evictable_.*data)' | sed 's/[:.]/ /g' | awk '{print $5,$6}' | while read metric val ; do
+        case "$metric" in
+            l2_hdr_size)   # filter in l2_hdr_size (because it takes real ram), filter out other l2 values since they are on disk, then filter in everything else
+            ;;
+            anon_size|mru_size|mru_ghost_size|mfu_size|mfu_ghost_size|metadata_size|data_size)
+                # these all equal $1_data + $1_metadata
+                continue
+                ;;
+            l2*)
+                continue
+                ;;
+            *)
+                ;;
+        esac
+        echo "$metric $val"
+    done
+}
+
 case $1 in
     config)
 	cat <<EOF
@@ -20,7 +39,27 @@ graph_title ZFS ARC Memory - L1
 graph_category filesystem 
 graph_info ZFS ARC L1 Memory
 EOF
-$sysctl kstat.zfs.misc.arcstats | grep -v l2 | egrep '(\.p:|\.c:|c_min|c_max|size)' | awk 'BEGIN { FS = "[.:]" } { displayname = $5; gsub("_"," ",displayname) } {print $5".label "displayname"\n"$5".type GAUGE\n"$5".min 0"}' | grep -v "^\."
+        echo graph_order "hdr_size other_size anon_evictable_data anon_evictable_metadata mru_evictable_data mru_evictable_metadata mru_ghost_evictable_data mru_ghost_evictable_metadata mfu_evictable_data mfu_evictable_metadata mfu_ghost_evictable_data mfu_ghost_evictable_metadata l2_hdr_size duplicate_buffers_size arc_sys_free p c c_min c_max size arc_prune arc_meta_used arc_meta_limit arc_meta_min arc_meta_max"
+
+        # these are gauges, not stackable areas: arc meta max ; arc meta min ; arc meta limit ; c min ; c max ; size ;
+
+        getstats | while read metric val ; do
+            case "$metric" in
+                # some good data here on what ones are sizes and should be graphed:             https://www.listbox.com/member/archive/post_content.html?post_id=20150811092848:E415AE22-402C-11E5-9BF6-FFA376E46B6E&address=002
+                c|p|c_min|c_max|size|arc_prune|arc_meta_limit|arc_meta_max|arc_meta_min|arc_meta_used)
+                    draw=LINE
+                    ;;
+                *)
+                    draw=AREASTACK
+                    ;;
+            esac
+
+            metric_str="${metric//_/ }"
+            echo "$metric.label $metric_str"
+            echo "$metric.type GAUGE"
+            echo "$metric.draw $draw"
+            echo "$metric.min 0"
+        done
 	exit 0
 	;;
     autoconf)
@@ -41,5 +80,6 @@ $sysctl kstat.zfs.misc.arcstats | grep -v l2 | egrep '(\.p:|\.c:|c_min|c_max|siz
 	;;
 esac
 
-$sysctl kstat.zfs.misc.arcstats | grep -v l2 | egrep '(\.p:|\.c:|c_min|c_max|size)' | awk 'BEGIN { FS = "[.:]" } { displayname = $5; gsub("_"," ",displayname) } {print $5".value",$NF}' | grep -v "^\."
-
+getstats | while read metric val ; do
+    echo "$metric.value $val"
+done
