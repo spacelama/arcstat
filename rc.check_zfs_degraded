@@ -1,0 +1,45 @@
+#!/bin/sh
+#
+# Checks status of ZPool and notifies if there are any issues.
+# Written by Scott Ullrich Sep 27 2009
+#
+
+# Check to see if anything is degraded
+DEGRADED=`zpool status | grep -v grep | grep -i DEGRADED | wc -l`
+# Check to see if anything is UNAVAILABLE
+
+UNAVAIL=`zpool status | grep -v grep | grep -i UNAVAIL | wc -l`
+
+# zpool command
+ZPOOL_STATUS=`date ; zpool status`
+
+# Email address to send to
+EMAIL=""
+
+# Second email address to send to (pager)
+EMAILTWO=""
+
+# Subject of email
+SUBJECT="[URGENT] ZPOOL Degraded.  Immediate attention required! `date`"
+
+# Pager notified toggle
+PAGERNOTIFIED="/tmp/pager_notified"
+
+# IF UNAVAIL is above 0 then set DEGRADED to 1
+if [ "$UNAVAIL" -gt 0 ]; then
+	DEGRADED="1"
+fi
+
+# Finally if DEGRADED is above 0 then email
+if [ "$DEGRADED" -gt 0 ]; then
+	if [ ! -f "PAGERNOTIFIED" ]; then
+		echo "$ZPOOL_STATUS" | mailx -s "$SUBJECT" "$EMAIL"
+		echo "$ZPOOL_STATUS" | mailx -s "$SUBJECT" "$EMAILTWO"
+		echo textsent > $PAGERNOTIFIED
+	else
+	fi
+else 
+	# Do not spam.
+	rm -f $PAGERNOTIFIED
+fi
+
